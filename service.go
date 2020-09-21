@@ -100,9 +100,9 @@ func (service *Service) startListening() {
 	if err != nil {
 		panic(err)
 	}
-	go fasthttp.Serve(ln, service.router.Handler)
-	log.Printf("Serving at: %s", service.address())
 	service.listener = ln
+	log.Printf("Serving at: %s", service.address())
+	fasthttp.Serve(ln, service.router.Handler)
 }
 
 func (service *Service) address() string {

@@ -12,7 +12,7 @@ import (
 func echo(ctx *fasthttp.RequestCtx) {
 	fmt.Fprint(ctx, string(ctx.RequestURI()))
 }
-var simpleEchoRoute Route = Route {
+var simpleEchoRoute = Route {
 	Label: "SimpleEcho",
 	Description: "A Simple route that outputs the Request URI",
 	Endpoint: echo,
@@ -49,7 +49,7 @@ func TestNoMiddlewares(t *testing.T) {
 			&simpleEchoRoute,
 		},
 	}
-	service.Start()
+	go service.Start()
 	defer service.Stop()
 
 	resp := testRequestToHandler(t, GET, "http://localhost:8080/nomiddlewaretest/v0/echo", "No Middleware", fasthttp.StatusOK)

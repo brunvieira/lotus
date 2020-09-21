@@ -42,9 +42,9 @@ func testRequestToHandler(
 
 func TestNoMiddlewares(t *testing.T) {
 	service := Service {
-		Host: "localhost",
-		Port: 8080,
-		Domain: "/nomiddlewaretest",
+		Host:      "localhost",
+		Port:      8080,
+		Namespace: "nomiddlewaretest",
 		Routes: []*Route {
 			&simpleEchoRoute,
 		},
@@ -55,5 +55,5 @@ func TestNoMiddlewares(t *testing.T) {
 	resp := testRequestToHandler(t, GET, "http://localhost:8080/nomiddlewaretest/v0/echo", "No Middleware", fasthttp.StatusOK)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.Nil(t, err, "Reading the body response should not return an error")
-	assert.Equal(t, service.suffix() + simpleEchoRoute.Path, string(body), "Body output should be the correct path format")
+	assert.Equal(t, service.suffix() + simpleEchoRoute.Path, string(body), "Body output should be the correct namespace format")
 }

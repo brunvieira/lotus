@@ -18,8 +18,8 @@ const (
 	DefaultHost string = "localhost"
 	// Default Port is the port used if not initialized.
 	DefaultPort = "8080"
-	// Default Domain is the domain used  if not initialized.
-	DefaultDomain = "/"
+	// Default Namespace is the namespace used  if not initialized.
+	DefaultNamespace = "/"
 	// Default Version is the version used if not initialized.
 	DefaultVersion = "v0"
 
@@ -57,8 +57,8 @@ type Service struct {
 	Protocol  protocol
 	// Host of the service. Can be an IPV4 or IPV6 address. Defaults to "localhost"
 	Host string
-	// Domain of the service. The unique namespace which the service will be delivered upon. Defaults to "/"
-	Domain string
+	// Namespace of the service. The unique namespace which the service will be delivered upon. Defaults to "/"
+	Namespace string
 	// Port of the service listener
 	Port int
 	// A version identifier for the service. Defaults to "v0"
@@ -68,7 +68,7 @@ type Service struct {
 }
 
 /** Start inits the main process executed by the service. It first creates the internal router and then start a listener
-for those routes and serve then on the specified Host, Port, Domain and Version. For a Service created with the following
+for those routes and serve then on the specified Host, Port, Namespace and Version. For a Service created with the following
 values:
 
 		service := &Service {
@@ -76,7 +76,7 @@ values:
 			Description: "Just a server to cover route url building",
 			Protocol: lotus.HTTP,+
 			Host: "myhost.com",
- */
+*/
 func (service *Service) Start() {
 	service.createRouter()
 	service.startRoutes()
@@ -118,10 +118,10 @@ func (service *Service) address() string {
 
 func (service *Service) suffix() string {
 	var buffer bytes.Buffer
-	if service.domain()[0] != '/' {
+	if service.namespace()[0] != '/' {
 		buffer.WriteByte('/')
 	}
-	buffer.WriteString(service.domain())
+	buffer.WriteString(service.namespace())
 	if service.version()[0] != '/' {
 		buffer.WriteByte('/')
 	}
@@ -156,11 +156,11 @@ func (service *Service) port() string {
 	return DefaultPort
 }
 
-func (service *Service) domain() string {
-	if service.Domain != "" {
-		return service.Domain
+func (service *Service) namespace() string {
+	if service.Namespace != "" {
+		return service.Namespace
 	}
-	return DefaultDomain
+	return DefaultNamespace
 }
 
 func (service *Service) version() string {

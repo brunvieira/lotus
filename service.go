@@ -2,6 +2,7 @@ package lotus
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/buaazp/fasthttprouter"
 	"github.com/valyala/fasthttp"
@@ -29,6 +30,11 @@ const (
 	HTTP protocol = "http"
 	// HTTPS protocol
 	HTTPS = "https"
+
+	// Errors
+
+	// RouteNotFoundError error when the service can't find a route
+	RouteNotFoundError string = "route not found"
 )
 
 // Service providers are constructs able to start, stop and show it's current health (heartbeat)
@@ -81,6 +87,27 @@ func (service *Service) Start() {
 	service.createRouter()
 	service.startRoutes()
 	service.startListening()
+}
+
+func (service *Service) Stop() error {
+	err := service.listener.Close()
+	if err != nil {
+		log.Printf("Failed to stop service: %s. Error: %s", service.Label, err)
+	}
+	log.Println("Service", service.Label, "stopped...")
+	return err
+}
+
+func (service *Service) Status() error {
+	return nil
+}
+
+func (service *Service) RouteUrl(label string) (string, error) {
+	r, err := service.routeByLabel(label)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s://%s%s%s", service.protocol(), service.address(), service.suffix(), r.Path), nil
 }
 
 func (service *Service) createRouter() {
@@ -170,17 +197,12 @@ func (service *Service) version() string {
 	return DefaultVersion
 }
 
-func (service *Service) Stop() error {
-	err := service.listener.Close()
-	if err != nil {
-		log.Printf("Failed to stop service: %s. Error: %s", service.Label, err)
+
+func (service *Service) routeByLabel(label string) (*Route, error) {
+	for _, r := range service.Routes {
+		if r.Label == label {
+			return r, nil
+		}
 	}
-	log.Println("Service", service.Label, "stopped...")
-	return err
+	return nil, errors.New(RouteNotFoundError)
 }
-
-func (service *Service) Status() error {
-	return nil
-}
-
-

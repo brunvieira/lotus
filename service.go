@@ -1,13 +1,13 @@
 package lotus
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/buaazp/fasthttprouter"
 	"github.com/valyala/fasthttp"
 	"log"
 	"net"
+	"strings"
 )
 
 type protocol string
@@ -107,7 +107,14 @@ func (service *Service) RouteUrl(label string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s://%s%s%s", service.protocol(), service.address(), service.suffix(), r.Path), nil
+	w := strings.Builder{}
+	w.Grow(len(service.protocol()) + 3 + len(service.address()) + len(service.suffix()) + len(r.Path))
+	w.WriteString(service.protocol())
+	w.WriteString("://")
+	w.WriteString(service.address())
+	w.WriteString(service.suffix())
+	w.WriteString(r.Path)
+	return w.String(), nil
 }
 
 func (service *Service) createRouter() {
@@ -133,27 +140,27 @@ func (service *Service) startListening() {
 }
 
 func (service *Service) address() string {
-	var buffer bytes.Buffer
+	var builder strings.Builder
 
-	buffer.WriteString(service.host())
+	builder.WriteString(service.host())
 	if service.port()[0] != ':' {
-		buffer.WriteByte(':')
+		builder.WriteByte(':')
 	}
-	buffer.WriteString(service.port())
-	return buffer.String()
+	builder.WriteString(service.port())
+	return builder.String()
 }
 
 func (service *Service) suffix() string {
-	var buffer bytes.Buffer
+	var builder strings.Builder
 	if service.namespace()[0] != '/' {
-		buffer.WriteByte('/')
+		builder.WriteByte('/')
 	}
-	buffer.WriteString(service.namespace())
+	builder.WriteString(service.namespace())
 	if service.version()[0] != '/' {
-		buffer.WriteByte('/')
+		builder.WriteByte('/')
 	}
-	buffer.WriteString(service.version())
-	return buffer.String()
+	builder.WriteString(service.version())
+	return builder.String()
 }
 
 func (service *Service) apiHandler() fasthttp.RequestHandler {

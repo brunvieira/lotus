@@ -3,6 +3,7 @@ package lotus
 import (
 	"errors"
 	"fmt"
+	"github.com/brunvieira/fastalice"
 	"github.com/buaazp/fasthttprouter"
 	"github.com/valyala/fasthttp"
 	"log"
@@ -47,14 +48,8 @@ type ServiceProvider interface {
 	Status() error
 }
 
-// Service is a Service Provider that starts itself and serves declared routes over a self created router
-type Service struct {
-	// private addr field. Holds a reference to the service addr
-	addr string
-	// private router field. Holds a reference to the router
-	router *fasthttprouter.Router
-	// private listener field. Holds a reference to the listener
-	listener net.Listener
+// ServiceContract holds the Contract description of a service
+type ServiceContract struct {
 	// Name of the service. Used as a identifier for the service
 	Label string
 	// Description of the service. Intended to be a Short text describing the functionalities of the service
@@ -69,8 +64,30 @@ type Service struct {
 	Port int
 	// A version identifier for the service. Defaults to "v0"
 	Version string
-	// Routes store the routes served by this service
-	Routes []*Route
+	//RoutesContracts is an array of RouteContract used to define the Routes on the contract
+	RoutesContracts []RouteContract
+}
+
+func (sc *ServiceContract) RouteContractByLabel(label string) *RouteContract {
+	for _, r := range sc.RoutesContracts {
+		if r.Label == label {
+			return &r
+		}
+	}
+	return nil
+}
+
+// Service is a Service Provider that starts itself and serves declared routes over a self created router
+type Service struct {
+	*ServiceContract
+	// private addr field. Holds a reference to the service addr
+	addr string
+	// private router field. Holds a reference to the router
+	router *fasthttprouter.Router
+	// private listener field. Holds a reference to the listener
+	listener net.Listener
+	// routes is an array of Route from the Service. They are validate against the RoutesContracts from the ServiceContract
+	routes []*Route
 }
 
 /** Start inits the main process executed by the service. It first creates the internal router and then start a listener
@@ -80,10 +97,13 @@ values:
 		service := &Service {
 			Label: "ExampleService",
 			Description: "Just a server to cover route url building",
-			Protocol: lotus.HTTP,+
+			Protocol: lotus.HTTP,
 			Host: "myhost.com",
+			Namespace: "example",
+		}
 */
 func (service *Service) Start() {
+	service.validateRoutes()
 	service.createRouter()
 	service.startRoutes()
 	service.startListening()
@@ -102,19 +122,56 @@ func (service *Service) Status() error {
 	return nil
 }
 
-func (service *Service) RouteUrl(label string) (string, error) {
-	r, err := service.routeByLabel(label)
-	if err != nil {
-		return "", err
+// SetupRoute searches for a route contract identified by label, creates a Route, add to it the endpoint and the
+// middlewares and put it on the Routes array returning the newly created routes
+func (service *Service) SetupRoute(
+	label string,
+	endpoint fasthttp.RequestHandler,
+	middlewares... fastalice.Constructor,
+) *Route {
+	routeContract := service.routeContract(label)
+	service.testRouteContractExists(routeContract, label)
+	route := Route{
+		routeContract,
+		endpoint,
+		middlewares,
 	}
-	w := strings.Builder{}
-	w.Grow(len(service.protocol()) + 3 + len(service.address()) + len(service.suffix()) + len(r.Path))
-	w.WriteString(service.protocol())
-	w.WriteString("://")
-	w.WriteString(service.address())
-	w.WriteString(service.suffix())
-	w.WriteString(r.Path)
-	return w.String(), nil
+	service.AddRoute(&route)
+	return &route
+}
+
+// AddRoute adds an already created route to the service routes array
+func (service *Service) AddRoute(route *Route) {
+	routes := append(service.routes, route)
+	service.routes = routes
+}
+
+func (service *Service) validateRoutes() {
+	routeDescriptions := service.RoutesContracts
+	for _, desc := range routeDescriptions {
+		var routeContract *RouteContract
+		for _, c := range service.routes {
+			if c.Label == desc.Label {
+				routeContract = c.RouteContract
+			}
+		}
+		service.testRouteContractExists(routeContract, desc.Label)
+	}
+}
+
+func (service *Service) testRouteContractExists(routeContract *RouteContract, label string) {
+	if routeContract == nil {
+		panic("Route for " + label + " not found")
+	}
+}
+
+func (service *Service) routeContract(label string) *RouteContract {
+	for _, routeContract := range service.RoutesContracts {
+		if routeContract.Label == label {
+			return &routeContract
+		}
+	}
+	return nil
 }
 
 func (service *Service) createRouter() {
@@ -124,7 +181,7 @@ func (service *Service) createRouter() {
 }
 
 func (service *Service) startRoutes()  {
-	for _, route := range service.Routes {
+	for _, route := range service.routes {
 		route.startRoute(service.router, service.suffix())
 	}
 }
@@ -206,10 +263,25 @@ func (service *Service) version() string {
 
 
 func (service *Service) routeByLabel(label string) (*Route, error) {
-	for _, r := range service.Routes {
+	for _, r := range service.routes {
 		if r.Label == label {
 			return r, nil
 		}
 	}
 	return nil, errors.New(RouteNotFoundError)
+}
+
+func (service *Service) RouteUrl(label string) (string, error) {
+	r, err := service.routeByLabel(label)
+	if err != nil {
+		return "", err
+	}
+	w := strings.Builder{}
+	w.Grow(len(service.protocol()) + 3 + len(service.address()) + len(service.suffix()) + len(r.Path))
+	w.WriteString(service.protocol())
+	w.WriteString("://")
+	w.WriteString(service.address())
+	w.WriteString(service.suffix())
+	w.WriteString(r.Path)
+	return w.String(), nil
 }

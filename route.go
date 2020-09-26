@@ -23,20 +23,25 @@ const (
 	DefaultRouteMethod Method = GET
 )
 
-// Route is the definition of a route and what's used to initialize a route
-type Route struct {
+// RouteContract is the Contract description of a Route
+type RouteContract struct {
 	// Label is an identification for the route. It's used on status and log information
 	Label string
 	// Description is a short text that helps to document the route
 	Description string
 	// Method is the fasthttp method the route will listen upon
 	Method Method
+	// Path is the location where the route will listen to
+	Path string
+}
+
+// Route is the definition of a route and what's used to initialize a route
+type Route struct {
+	*RouteContract
 	// The endpoint is the path used to receive the request
 	Endpoint fasthttp.RequestHandler
 	// Middlewares functions executed before the Endpoint
 	Middlewares []fastalice.Constructor
-	// Path is the location where the route will listen to
-	Path string
 }
 
 func (route *Route) startRoute(router *fasthttprouter.Router, prefix string) {

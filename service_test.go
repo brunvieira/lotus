@@ -9,14 +9,27 @@ import (
 	"testing"
 )
 
+
+var contract = Contract{
+	Services: []ServiceContract{
+		{
+			Label: "EchoService",
+			Host:      "localhost",
+			Port:      8080,
+			Namespace: "nomiddlewaretest",
+			RoutesContracts: []RouteContract{
+				{
+					Label: "SimpleEcho",
+					Description: "A Simple route that outputs the Request URI",
+					Path: "/echo",
+				},
+			},
+		},
+	},
+}
+
 func echo(ctx *fasthttp.RequestCtx) {
 	fmt.Fprint(ctx, string(ctx.RequestURI()))
-}
-var simpleEchoRoute = Route {
-	Label: "SimpleEcho",
-	Description: "A Simple route that outputs the Request URI",
-	Endpoint: echo,
-	Path: "/echo",
 }
 
 func testRequestToHandler(
@@ -42,13 +55,9 @@ func testRequestToHandler(
 
 func TestNoMiddlewares(t *testing.T) {
 	service := Service {
-		Host:      "localhost",
-		Port:      8080,
-		Namespace: "nomiddlewaretest",
-		Routes: []*Route {
-			&simpleEchoRoute,
-		},
+		ServiceContract: contract.serviceContract("EchoService"),
 	}
+	simpleEchoRoute := service.SetupRoute("SimpleEcho", echo)
 	go service.Start()
 	defer service.Stop()
 

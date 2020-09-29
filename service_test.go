@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
-	"io/ioutil"
-	"net/http"
 	"testing"
 )
 
@@ -38,14 +36,18 @@ func testRequestToHandler(
 	url string,
 	testName string,
 	expectedStatus int,
-) *http.Response {
-	req, err := http.NewRequest(string(method), url, nil)
-	assert.Nil(t, err, fmt.Sprintf("%s test should be able to create a request", testName))
+) *fasthttp.Response {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
 
-	resp, err := http.DefaultClient.Do(req)
+	req.Header.SetMethod(string(method))
+	req.SetRequestURI(url)
+
+	err := fasthttp.Do(req, resp)
 	assert.Nil(t, err, "Sending the request must not return an error")
 	assert.NotNil(t, resp, "Request response must not be nil")
-	assert.Equal(t, expectedStatus, resp.StatusCode, fmt.Sprintf("%s test should return a %d status", testName, expectedStatus))
+	assert.Equal(t, expectedStatus, resp.StatusCode(), fmt.Sprintf("%s test should return a %d status", testName, expectedStatus))
 	if err != nil {
 		panic(err)
 	}
@@ -54,7 +56,7 @@ func testRequestToHandler(
 
 
 func TestNoMiddlewares(t *testing.T) {
-	service := Service {
+	service := Service{
 		ServiceContract: contract.serviceContract("EchoService"),
 	}
 	simpleEchoRoute := service.SetupRoute("SimpleEcho", echo)
@@ -70,7 +72,9 @@ func TestNoMiddlewares(t *testing.T) {
 	}
 
 	resp := testRequestToHandler(t, GET, url, "No Middleware", fasthttp.StatusOK)
-	body, err := ioutil.ReadAll(resp.Body)
-	assert.Nil(t, err, "Reading the body response should not return an error")
+	defer fasthttp.ReleaseResponse(resp)
+
+	body := resp.Body()
+	assert.NotEmptyf(t, body, "Reading the body response should not return an error")
 	assert.Equal(t, endpoint, string(body), "Body output should be the correct namespace format")
 }

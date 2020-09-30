@@ -1,38 +1,18 @@
-package lotus
+package test
 
 import (
 	"fmt"
+	"github.com/brunvieira/lotus"
+	"github.com/brunvieira/lotus/test/contract"
+	"github.com/brunvieira/lotus/test/echo_service"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 	"testing"
 )
 
-
-var contract = Contract{
-	Services: []ServiceContract{
-		{
-			Label: "EchoService",
-			Host:      "localhost",
-			Port:      8080,
-			Namespace: "nomiddlewaretest",
-			RoutesContracts: []RouteContract{
-				{
-					Label: "SimpleEcho",
-					Description: "A Simple route that outputs the Request URI",
-					Path: "/echo",
-				},
-			},
-		},
-	},
-}
-
-func echo(ctx *fasthttp.RequestCtx) {
-	fmt.Fprint(ctx, string(ctx.RequestURI()))
-}
-
 func testRequestToHandler(
 	t *testing.T,
-	method Method,
+	method lotus.Method,
 	url string,
 	testName string,
 	expectedStatus int,
@@ -54,24 +34,20 @@ func testRequestToHandler(
 	return resp
 }
 
-
 func TestNoMiddlewares(t *testing.T) {
-	service := Service{
-		ServiceContract: contract.serviceContract("EchoService"),
-	}
-	simpleEchoRoute := service.SetupRoute("SimpleEcho", echo)
+	service := echo_service.EchoService
 	go service.Start()
 	defer service.Stop()
 
-	endpoint := service.suffix() + simpleEchoRoute.Path
-	url, err := service.RouteUrl(simpleEchoRoute.Label)
+	endpoint := service.Suffix() + contract.SimpleEchoRouteContract.Path
+	url, err := service.RouteUrl(contract.SimpleEchoRouteContract.Label)
 	assert.Nil(t, err, "Service must build a valid url for a route")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp := testRequestToHandler(t, GET, url, "No Middleware", fasthttp.StatusOK)
+	resp := testRequestToHandler(t, lotus.GET, url, "No Middleware", fasthttp.StatusOK)
 	defer fasthttp.ReleaseResponse(resp)
 
 	body := resp.Body()

@@ -33,6 +33,8 @@ type RouteContract struct {
 	Method Method
 	// Path is the location where the route will listen to
 	Path string
+	// DataContracts is the description of the data
+	DataContracts []DataContract
 }
 
 // Route is the definition of a route and what's used to initialize a route
@@ -42,10 +44,18 @@ type Route struct {
 	Endpoint fasthttp.RequestHandler
 	// Middlewares functions executed before the Endpoint
 	Middlewares []fastalice.Constructor
+	// DataHandlers are used to setup the request
+	DataHandlers []DataHandler
 }
 
 func (route *Route) startRoute(router *fasthttprouter.Router, prefix string) {
-	handler := fastalice.New(route.Middlewares...).Then(route.Endpoint)
+	chain := fastalice.New(route.Middlewares...)
+	if len(route.DataHandlers) > 0 {
+		for _, dh := range route.DataHandlers {
+			chain = chain.Append(dh.ReceiveRequest)
+		}
+	}
+	handler := chain.Then(route.Endpoint)
 	path := prefix + route.Path
 	switch route.method() {
 	case DELETE:

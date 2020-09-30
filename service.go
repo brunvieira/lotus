@@ -127,7 +127,8 @@ func (service *Service) Status() error {
 func (service *Service) SetupRoute(
 	label string,
 	endpoint fasthttp.RequestHandler,
-	middlewares... fastalice.Constructor,
+	middlewares []fastalice.Constructor,
+	dataHandlers []DataHandler,
 ) *Route {
 	routeContract := service.routeContract(label)
 	service.testRouteContractExists(routeContract, label)
@@ -135,6 +136,7 @@ func (service *Service) SetupRoute(
 		routeContract,
 		endpoint,
 		middlewares,
+		[]DataHandler{},
 	}
 	service.AddRoute(&route)
 	return &route
@@ -182,7 +184,7 @@ func (service *Service) createRouter() {
 
 func (service *Service) startRoutes()  {
 	for _, route := range service.routes {
-		route.startRoute(service.router, service.suffix())
+		route.startRoute(service.router, service.Suffix())
 	}
 }
 
@@ -207,7 +209,7 @@ func (service *Service) address() string {
 	return builder.String()
 }
 
-func (service *Service) suffix() string {
+func (service *Service) Suffix() string {
 	var builder strings.Builder
 	if service.namespace()[0] != '/' {
 		builder.WriteByte('/')
@@ -277,11 +279,11 @@ func (service *Service) RouteUrl(label string) (string, error) {
 		return "", err
 	}
 	w := strings.Builder{}
-	w.Grow(len(service.protocol()) + 3 + len(service.address()) + len(service.suffix()) + len(r.Path))
+	w.Grow(len(service.protocol()) + 3 + len(service.address()) + len(service.Suffix()) + len(r.Path))
 	w.WriteString(service.protocol())
 	w.WriteString("://")
 	w.WriteString(service.address())
-	w.WriteString(service.suffix())
+	w.WriteString(service.Suffix())
 	w.WriteString(r.Path)
 	return w.String(), nil
 }

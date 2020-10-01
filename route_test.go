@@ -111,7 +111,7 @@ func testMethod(
 
 
 func TestGet(t *testing.T) {
-	testMethod(t, GET, "8080")
+	testMethod(t, "", "8080")
 }
 
 func TestDelete(t *testing.T) {

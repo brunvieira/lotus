@@ -21,7 +21,7 @@ const (
 	// Default Port is the port used if not initialized.
 	DefaultPort = "8080"
 	// Default Namespace is the namespace used  if not initialized.
-	DefaultNamespace = "/"
+	DefaultNamespace = ""
 	// Default Version is the version used if not initialized.
 	DefaultVersion = "v0"
 
@@ -38,6 +38,12 @@ const (
 	RouteNotFoundError string = "route not found"
 )
 
+type ServiceStatus struct {
+	IsRunning bool
+	Address net.Addr
+	RegisteredRoutes int
+}
+
 // Service providers are constructs able to start, stop and show it's current health (heartbeat)
 type ServiceProvider interface {
 	// Start inits the main process executed by the service
@@ -45,7 +51,7 @@ type ServiceProvider interface {
 	// Stop terminates all processes related to the service
 	Stop() error
 	// Status returns information about the health of the service
-	Status() error
+	Status() *ServiceStatus
 }
 
 // ServiceContract holds the Contract description of a service
@@ -110,16 +116,31 @@ func (service *Service) Start() {
 }
 
 func (service *Service) Stop() error {
+	if service.listener == nil {
+		return errors.New("service connection not found")
+	}
 	err := service.listener.Close()
 	if err != nil {
 		log.Printf("Failed to stop service: %s. Error: %s", service.Label, err)
+		return err
 	}
 	log.Println("Service", service.Label, "stopped...")
 	return err
 }
 
-func (service *Service) Status() error {
-	return nil
+func (service *Service) Status() *ServiceStatus {
+	if service.listener == nil {
+		return &ServiceStatus{
+			IsRunning: false,
+			Address: nil,
+			RegisteredRoutes: len(service.routes),
+		}
+	}
+	return &ServiceStatus {
+		IsRunning: true,
+		Address: service.listener.Addr(),
+		RegisteredRoutes: len(service.routes),
+	}
 }
 
 // SetupRoute searches for a route contract identified by label, creates a Route, add to it the endpoint and the
@@ -136,7 +157,7 @@ func (service *Service) SetupRoute(
 		routeContract,
 		endpoint,
 		middlewares,
-		[]DataHandler{},
+		dataHandlers,
 	}
 	service.AddRoute(&route)
 	return &route
@@ -211,7 +232,7 @@ func (service *Service) address() string {
 
 func (service *Service) Suffix() string {
 	var builder strings.Builder
-	if service.namespace()[0] != '/' {
+	if len(service.namespace()) > 0 && service.namespace()[0] != '/' {
 		builder.WriteByte('/')
 	}
 	builder.WriteString(service.namespace())
@@ -220,12 +241,6 @@ func (service *Service) Suffix() string {
 	}
 	builder.WriteString(service.version())
 	return builder.String()
-}
-
-func (service *Service) apiHandler() fasthttp.RequestHandler {
-	return func(ctx *fasthttp.RequestCtx) {
-		service.router.Handler(ctx)
-	}
 }
 
 func (service *Service) protocol() string {

@@ -23,12 +23,9 @@ func testMethodHandler(path string) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		ctx.WriteString(path)
 		if data := ctx.UserValue("data"); data != nil {
-			dataMap, ok := data.(map[string]interface{})
-			if ok {
-				for k, v := range dataMap {
-					ctx.WriteString(fmt.Sprintf("[%s]=%v", k, v))
-				}
-				return
+			if dataMap, ok := data.(map[string]interface{}); ok {
+				ctx.WriteString(fmt.Sprintf("[%s]=%v", "Foo", dataMap["Foo"]))
+				ctx.WriteString(fmt.Sprintf("[%s]=%v", "Bar", dataMap["Bar"]))
 			}
 		}
 	}

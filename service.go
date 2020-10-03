@@ -39,8 +39,8 @@ const (
 )
 
 type ServiceStatus struct {
-	IsRunning bool
-	Address net.Addr
+	IsRunning        bool
+	Address          net.Addr
 	RegisteredRoutes int
 }
 
@@ -61,7 +61,7 @@ type ServiceContract struct {
 	// Description of the service. Intended to be a Short text describing the functionalities of the service
 	Description string
 	// Protocol is the protocol which the serve will use. The current options are: HTTP, HTTPS or TCP. Defaults to HTTP
-	Protocol  protocol
+	Protocol protocol
 	// Host of the service. Can be an IPV4 or IPV6 address. Defaults to "localhost"
 	Host string
 	// Namespace of the service. The unique namespace which the service will be delivered upon. Defaults to "/"
@@ -119,26 +119,22 @@ func (service *Service) Stop() error {
 	if service.listener == nil {
 		return errors.New("service connection not found")
 	}
-	err := service.listener.Close()
-	if err != nil {
-		log.Printf("Failed to stop service: %s. Error: %s", service.Label, err)
-		return err
-	}
+	service.listener.Close()
 	log.Println("Service", service.Label, "stopped...")
-	return err
+	return nil
 }
 
 func (service *Service) Status() *ServiceStatus {
 	if service.listener == nil {
 		return &ServiceStatus{
-			IsRunning: false,
-			Address: nil,
+			IsRunning:        false,
+			Address:          nil,
 			RegisteredRoutes: len(service.routes),
 		}
 	}
-	return &ServiceStatus {
-		IsRunning: true,
-		Address: service.listener.Addr(),
+	return &ServiceStatus{
+		IsRunning:        true,
+		Address:          service.listener.Addr(),
 		RegisteredRoutes: len(service.routes),
 	}
 }
@@ -203,7 +199,7 @@ func (service *Service) createRouter() {
 	}
 }
 
-func (service *Service) startRoutes()  {
+func (service *Service) startRoutes() {
 	for _, route := range service.routes {
 		route.startRoute(service.router, service.Suffix())
 	}
@@ -277,7 +273,6 @@ func (service *Service) version() string {
 	}
 	return DefaultVersion
 }
-
 
 func (service *Service) routeByLabel(label string) (*Route, error) {
 	for _, r := range service.routes {

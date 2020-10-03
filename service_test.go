@@ -3,32 +3,31 @@ package lotus
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
-	"log"
 	"testing"
 	"time"
 )
 
 var SimpleEchoRouteContract = RouteContract{
-	Label: "SimpleEcho",
+	Label:       "SimpleEcho",
 	Description: "A Simple route that outputs the Request URI",
-	Path: "/echo",
+	Path:        "/echo",
 }
 
 var PostEchoRouteContract = RouteContract{
-	Label: "PostEcho",
+	Label:       "PostEcho",
 	Description: "A route that outputs the contents of it's body",
-	Path: "/echo",
-	Method: fasthttp.MethodPost,
+	Path:        "/echo",
+	Method:      fasthttp.MethodPost,
 }
 
 var EmptyRoute = Route{}
 
 var EchoServiceContract = ServiceContract{
-	Label: "EchoService",
+	Label:     "EchoService",
 	Host:      "localhost",
 	Namespace: "servicetest",
-	Version: "v1",
-	Protocol: HTTP,
+	Version:   "v1",
+	Protocol:  HTTP,
 	RoutesContracts: []RouteContract{
 		SimpleEchoRouteContract,
 		PostEchoRouteContract,
@@ -36,10 +35,10 @@ var EchoServiceContract = ServiceContract{
 }
 
 var ServiceContractWithDefaultValues = ServiceContract{
-	Label: "DefaultEchoService",
+	Label:     "DefaultEchoService",
 	Host:      "",
 	Namespace: "",
-	Port: 8090,
+	Port:      8090,
 	RoutesContracts: []RouteContract{
 		SimpleEchoRouteContract,
 		PostEchoRouteContract,
@@ -52,7 +51,6 @@ var contract = &Contract{
 		ServiceContractWithDefaultValues,
 	},
 }
-
 
 func echo(ctx *fasthttp.RequestCtx) {
 	ctx.Write(ctx.Method())
@@ -82,7 +80,7 @@ func TestFindLabelOnContract(t *testing.T) {
 func TestSetupRoute(t *testing.T) {
 	service := Service{ServiceContract: &EchoServiceContract}
 
-	shouldPanic(t, func () { service.SetupRoute("EmptyRoute", echo, nil, nil) })
+	shouldPanic(t, func() { service.SetupRoute("EmptyRoute", echo, nil, nil) })
 	notFoundRouteUrl, err := service.RouteUrl("NotFoundRoute")
 	assert.Empty(t, notFoundRouteUrl, "A non found route should return an empty url")
 
@@ -108,9 +106,9 @@ func TestPanicWhenServicePortIsTaken(t *testing.T) {
 
 	postEchoRoute := Route{
 		RouteContract: &PostEchoRouteContract,
-		Endpoint: echo,
-		Middlewares: nil,
-		DataHandlers: nil,
+		Endpoint:      echo,
+		Middlewares:   nil,
+		DataHandlers:  nil,
 	}
 	service.AddRoute(&postEchoRoute)
 
@@ -136,14 +134,13 @@ func TestStartService(t *testing.T) {
 
 	postEchoRoute := Route{
 		RouteContract: &PostEchoRouteContract,
-		Endpoint: echo,
-		Middlewares: nil,
-		DataHandlers: nil,
+		Endpoint:      echo,
+		Middlewares:   nil,
+		DataHandlers:  nil,
 	}
 	service.AddRoute(&postEchoRoute)
 
 	url, err := service.RouteUrl(SimpleEchoRouteContract.Label)
-	log.Println("url", url)
 	assert.Nil(t, err, "Service must build a valid url for a route")
 
 	go service.Start()

@@ -155,7 +155,6 @@ func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp)
 
-	req.Header.SetMethod(string(method))
 	req.SetRequestURI("http://" + url + path)
 	dataHandler.PrepareRouteRequest(req, route)
 

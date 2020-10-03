@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/valyala/fasthttp"
 	"github.com/vmihailenco/msgpack"
-	"log"
 	"net/url"
 	"regexp"
 	"strings"
@@ -85,14 +84,18 @@ func receiveRequestFn(d *DefaultDataHandler, ctx *fasthttp.RequestCtx) error {
 			return nil
 		}
 		err := msgpack.Unmarshal(body, &result)
-		ctx.SetUserValue(key, result.Payload)
+		if result != nil {
+			ctx.SetUserValue(key, result.Payload)
+		}
 		return err
 	case JSON:
 		if len(body) == 0 {
 			return nil
 		}
 		err := json.Unmarshal(body, &result)
-		ctx.SetUserValue(key, result.Payload)
+		if result != nil {
+			ctx.SetUserValue(key, result.Payload)
+		}
 		return err
 	case RouteParams:
 		// handled by fasthttp.Router

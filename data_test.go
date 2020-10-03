@@ -49,16 +49,16 @@ func prepareRequestForDataType(
 ) *fasthttp.Request {
 	path := "/datahandler"
 
-	var dataHandler DataHandler
+	var dataHandler DataConverter
 	dataContract := NewDataContract(dataType)
 
-	dataHandler = &DefaultDataHandler{
+	dataHandler = &DataHandler{
 		DataContract: &dataContract,
 		Payload:      defaultPayload,
 	}
 
 	contract := routeContractForMethod(method, path, []DataContract{dataContract})
-	route := routeForContract(contract, path, nil, []DataHandler{dataHandler})
+	route := routeForContract(contract, path, nil, []DataConverter{dataHandler})
 
 	req := fasthttp.AcquireRequest()
 	err := dataHandler.PrepareRouteRequest(req, route)
@@ -97,13 +97,13 @@ func testReceivePostRequest(
 ) {
 	path := "/data"
 	dataContract := NewDataContract(dataType)
-	dataHandler := &DefaultDataHandler{
+	dataHandler := &DataHandler{
 		DataContract: &dataContract,
 		Payload:      defaultPayload,
 	}
 
 	contract := routeContractForMethod(POST, path, []DataContract{dataContract})
-	route := routeForContract(contract, path, nil, []DataHandler{dataHandler})
+	route := routeForContract(contract, path, nil, []DataConverter{dataHandler})
 	route.Endpoint = endpoint
 
 	router := fasthttprouter.New()
@@ -224,10 +224,10 @@ func TestPrepareRouteParams(t *testing.T) {
 	path := "/data/:foo/:bar"
 	port := "9093"
 
-	var dataHandler DataHandler
+	var dataHandler DataConverter
 	dataContract := NewDataContract(RouteParams)
 
-	dataHandler = &DefaultDataHandler{
+	dataHandler = &DataHandler{
 		DataContract: &dataContract,
 		Payload:      getPayload,
 	}
@@ -245,7 +245,7 @@ func TestPrepareRouteParams(t *testing.T) {
 	}
 
 	contract := routeContractForMethod(GET, path, []DataContract{dataContract})
-	route := routeForContract(contract, path, nil, []DataHandler{dataHandler})
+	route := routeForContract(contract, path, nil, []DataConverter{dataHandler})
 	route.Endpoint = getEcho
 
 	router := fasthttprouter.New()
@@ -274,10 +274,10 @@ func TestPrepareQueryParams(t *testing.T) {
 	path := "/data"
 	port := "9094"
 
-	var dataHandler DataHandler
+	var dataHandler DataConverter
 	dataContract := NewDataContract(QueryParams)
 
-	dataHandler = &DefaultDataHandler{
+	dataHandler = &DataHandler{
 		DataContract: &dataContract,
 		Payload:      getPayload,
 	}
@@ -296,7 +296,7 @@ func TestPrepareQueryParams(t *testing.T) {
 	}
 
 	contract := routeContractForMethod(GET, path, []DataContract{dataContract})
-	route := routeForContract(contract, path, nil, []DataHandler{dataHandler})
+	route := routeForContract(contract, path, nil, []DataConverter{dataHandler})
 	route.Endpoint = getEcho
 
 	router := fasthttprouter.New()

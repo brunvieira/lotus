@@ -145,7 +145,7 @@ func (service *Service) SetupRoute(
 	label string,
 	endpoint fasthttp.RequestHandler,
 	middlewares []fastalice.Constructor,
-	dataHandlers []DataHandler,
+	dataHandlers []DataConverter,
 ) *Route {
 	routeContract := service.routeContract(label)
 	service.testRouteContractExists(routeContract, label)

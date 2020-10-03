@@ -41,12 +41,12 @@ func routeContractForMethod(method Method, path string, dataContracts []DataCont
 	}
 }
 
-func routeForContract(contract *RouteContract, path string, middlewares []fastalice.Constructor, dataHandlers []DataHandler) *Route {
+func routeForContract(contract *RouteContract, path string, middlewares []fastalice.Constructor, dataHandlers []DataConverter) *Route {
 	route := Route{
 		RouteContract: contract,
-		Endpoint: testMethodHandler(path),
-		Middlewares: middlewares,
-		DataHandlers: dataHandlers,
+		Endpoint:      testMethodHandler(path),
+		Middlewares:   middlewares,
+		DataHandlers:  dataHandlers,
 	}
 	return &route
 }
@@ -97,15 +97,13 @@ func testMethod(
 	go fasthttp.Serve(ln, router.Handler)
 	defer ln.Close()
 
-
-	resp := testRequestToHandler(t, method, "http://" + url + path, nil, string(method), fasthttp.StatusOK)
+	resp := testRequestToHandler(t, method, "http://"+url+path, nil, string(method), fasthttp.StatusOK)
 	defer fasthttp.ReleaseResponse(resp)
 
 	respBody := resp.Body()
 	assert.NotEmptyf(t, respBody, "Reading the body response should not return an error")
 	assert.Equal(t, path, string(respBody), "Body output should be the correct method")
 }
-
 
 func TestGet(t *testing.T) {
 	testMethod(t, "", "8080")
@@ -127,8 +125,8 @@ func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	path := "/middlewares"
 	method := Method(POST)
 	dataContract := NewDataContract(Binary)
-	var dataHandler DataHandler
-	dataHandler = &DefaultDataHandler{&dataContract, map[string]interface{}{
+	var dataHandler DataConverter
+	dataHandler = &DataHandler{&dataContract, map[string]interface{}{
 		"Foo": "foo",
 		"Bar": "bar",
 	}}
@@ -139,7 +137,7 @@ func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	}
 
 	contract := routeContractForMethod(method, path, []DataContract{dataContract})
-	route := routeForContract(contract, path, middlewares, []DataHandler{dataHandler})
+	route := routeForContract(contract, path, middlewares, []DataConverter{dataHandler})
 
 	router := fasthttprouter.New()
 	route.startRoute(router, "")
@@ -163,6 +161,5 @@ func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	body := resp.Body()
 	assert.NotEmptyf(t, body, "Reading the body response should not return an error")
 	assert.Equal(t, "/t1/t2/t3"+path+"[Foo]=foo[Bar]=bar", string(body), "Body output should be the correct write order")
-
 
 }

@@ -26,8 +26,8 @@ const (
 	DefaultKey string = "data"
 )
 
-// DataHandler is a interface for handling the exchange of data among services
-type DataHandler interface {
+// DataConverter is a interface for handling the exchange of data among services
+type DataConverter interface {
 	// ReceiveRequest is a middleware for handling data receiving. It unpacks the data and maps it's values to a
 	// *fasthttp.RequestCtx using fasthttp.SetUserValues
 	ReceiveRequest(req fasthttp.RequestHandler) fasthttp.RequestHandler
@@ -51,8 +51,8 @@ type DataContract struct {
 	Key string
 }
 
-// DefaultDataHandler is the Default data handler
-type DefaultDataHandler struct {
+// DataHandler is the Default data handler
+type DataHandler struct {
 	*DataContract
 	Payload interface{}
 }
@@ -61,7 +61,7 @@ func NewDataContract(dataType DataType) DataContract {
 	return DataContract{Type: dataType, Key: DefaultKey}
 }
 
-func (d *DefaultDataHandler) ReceiveRequest(next fasthttp.RequestHandler) fasthttp.RequestHandler {
+func (d *DataHandler) ReceiveRequest(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		err := receiveRequestFn(d, ctx)
 		if err != nil {
@@ -73,7 +73,7 @@ func (d *DefaultDataHandler) ReceiveRequest(next fasthttp.RequestHandler) fastht
 	}
 }
 
-func receiveRequestFn(d *DefaultDataHandler, ctx *fasthttp.RequestCtx) error {
+func receiveRequestFn(d *DataHandler, ctx *fasthttp.RequestCtx) error {
 	result := d
 	body := ctx.PostBody()
 	key := userValueKey(d)
@@ -112,7 +112,7 @@ func receiveRequestFn(d *DefaultDataHandler, ctx *fasthttp.RequestCtx) error {
 
 var routerParamReg = regexp.MustCompile(`:[a-zA-Z0-9]*`)
 
-func (d *DefaultDataHandler) PrepareRouteRequest(req *fasthttp.Request, route *Route) error {
+func (d *DataHandler) PrepareRouteRequest(req *fasthttp.Request, route *Route) error {
 	output := d
 
 	method := string(route.Method)
@@ -167,7 +167,7 @@ func replaceRouteMatches(m map[string][]string) func([]byte) []byte {
 	}
 }
 
-func dataModelToMap(d *DefaultDataHandler) (modelMap url.Values, err error) {
+func dataModelToMap(d *DataHandler) (modelMap url.Values, err error) {
 	b, err := json.Marshal(d.Payload)
 	if err != nil {
 		return modelMap, err
@@ -198,7 +198,7 @@ func dataModelToMap(d *DefaultDataHandler) (modelMap url.Values, err error) {
 	return modelMap, err
 }
 
-func userValueKey(d *DefaultDataHandler) string {
+func userValueKey(d *DataHandler) string {
 	if k := d.Key; len(k) == 0 {
 		return DefaultKey
 	}

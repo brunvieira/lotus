@@ -13,7 +13,7 @@ const (
 	// DELETE defines the DELETE type of request
 	DELETE Method = fasthttp.MethodDelete
 	// GET defines the GET type of request
-	GET  = fasthttp.MethodGet
+	GET = fasthttp.MethodGet
 	// POST defines the POST type of request
 	POST = fasthttp.MethodPost
 	// PUT defines the PUT type of request
@@ -45,7 +45,7 @@ type Route struct {
 	// Middlewares functions executed before the Endpoint
 	Middlewares []fastalice.Constructor
 	// DataHandlers are used to setup the request
-	DataHandlers []DataHandler
+	DataHandlers []DataConverter
 }
 
 func (route *Route) startRoute(router *fasthttprouter.Router, prefix string) {
@@ -70,7 +70,7 @@ func (route *Route) startRoute(router *fasthttprouter.Router, prefix string) {
 }
 
 func (route *Route) method() Method {
-	if len(route.Method) > 0  {
+	if len(route.Method) > 0 {
 		return route.Method
 	}
 	return DefaultRouteMethod

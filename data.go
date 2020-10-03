@@ -2,8 +2,11 @@ package lotus
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/valyala/fasthttp"
 	"github.com/vmihailenco/msgpack"
+	"log"
 	"net/url"
 	"regexp"
 	"strings"
@@ -11,13 +14,17 @@ import (
 
 type DataType int
 
-
 const (
-	Binary DataType = 1
-	JSON = 2
-	Form = 3
-	RouteParams = 4
-	QueryParams = 5
+	Binary      DataType = 1
+	JSON                 = 2
+	Form                 = 3
+	RouteParams          = 4
+	QueryParams          = 5
+
+	// Defaults
+
+	// DefaultKey is the UserValue key used when no Key is passed to the initializer
+	DefaultKey string = "data"
 )
 
 // DataHandler is a interface for handling the exchange of data among services
@@ -48,11 +55,11 @@ type DataContract struct {
 // DefaultDataHandler is the Default data handler
 type DefaultDataHandler struct {
 	*DataContract
-	Payload map[string]interface{}
+	Payload interface{}
 }
 
 func NewDataContract(dataType DataType) DataContract {
-		return DataContract{Type: dataType}
+	return DataContract{Type: dataType, Key: DefaultKey}
 }
 
 func (d *DefaultDataHandler) ReceiveRequest(next fasthttp.RequestHandler) fasthttp.RequestHandler {
@@ -68,7 +75,7 @@ func (d *DefaultDataHandler) ReceiveRequest(next fasthttp.RequestHandler) fastht
 }
 
 func receiveRequestFn(d *DefaultDataHandler, ctx *fasthttp.RequestCtx) error {
-	output := d
+	result := d
 	body := ctx.PostBody()
 	key := userValueKey(d)
 
@@ -77,15 +84,15 @@ func receiveRequestFn(d *DefaultDataHandler, ctx *fasthttp.RequestCtx) error {
 		if len(body) == 0 {
 			return nil
 		}
-		err := msgpack.Unmarshal(body, &output)
-		ctx.SetUserValue(key, output.Payload)
+		err := msgpack.Unmarshal(body, &result)
+		ctx.SetUserValue(key, result.Payload)
 		return err
 	case JSON:
 		if len(body) == 0 {
 			return nil
 		}
-		err := json.Unmarshal(body, &output)
-		ctx.SetUserValue(key, output.Payload)
+		err := json.Unmarshal(body, &result)
+		ctx.SetUserValue(key, result.Payload)
 		return err
 	case RouteParams:
 		// handled by fasthttp.Router
@@ -114,7 +121,7 @@ func (d *DefaultDataHandler) PrepareRouteRequest(req *fasthttp.Request, route *R
 		req.SetBody(b)
 		return err
 	case JSON:
-		b, err := json.Marshal(output)
+		b, err := json.Marshal(output.Payload)
 		req.SetBody(b)
 		return err
 	case Form:
@@ -141,6 +148,7 @@ func (d *DefaultDataHandler) PrepareRouteRequest(req *fasthttp.Request, route *R
 		}
 		query := "?" + m.Encode()
 		uriStr := req.URI().String()
+
 		newUri := uriStr + query
 		req.SetRequestURI(newUri)
 		return nil
@@ -156,19 +164,40 @@ func replaceRouteMatches(m map[string][]string) func([]byte) []byte {
 	}
 }
 
-func dataModelToMap(d *DefaultDataHandler) (url.Values, error) {
-	var modelMap map[string][]string
-	b, err := json.Marshal(d)
+func dataModelToMap(d *DefaultDataHandler) (modelMap url.Values, err error) {
+	b, err := json.Marshal(d.Payload)
 	if err != nil {
 		return modelMap, err
 	}
-	err = json.Unmarshal(b, &modelMap)
+	modelMap = map[string][]string{}
+	var result map[string]interface{}
+	err = json.Unmarshal(b, &result)
+	if err != nil {
+		return modelMap, err
+	}
+	for k, v := range result {
+		if modelMap[k] == nil {
+			modelMap[k] = []string{}
+		}
+		switch v := v.(type) {
+		case []interface{}:
+			for _, u := range v {
+				if u, ok := u.(string); ok {
+					modelMap[k] = append(modelMap[k], u)
+				} else {
+					err = errors.New(fmt.Sprintf("Could not convert: %+v of type %s to string", u, v))
+				}
+			}
+		default:
+			modelMap[k] = append(modelMap[k], fmt.Sprint(v))
+		}
+	}
 	return modelMap, err
 }
 
 func userValueKey(d *DefaultDataHandler) string {
 	if k := d.Key; len(k) == 0 {
-		return "data"
+		return DefaultKey
 	}
 	return d.Key
 }

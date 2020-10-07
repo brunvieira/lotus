@@ -7,52 +7,51 @@ import (
 	"time"
 )
 
-var SimpleEchoRouteContract = RouteContract{
-	Label:       "SimpleEcho",
-	Description: "A Simple route that outputs the Request URI",
-	Path:        "/echo",
-}
+var (
+	SimpleEchoRouteContract = RouteContract{
+		Label:       "SimpleEcho",
+		Description: "A Simple route that outputs the RequestHandler URI",
+		Path:        "/echo",
+	}
+	PostEchoRouteContract = RouteContract{
+		Label:       "PostEcho",
+		Description: "A route that outputs the contents of it's body",
+		Path:        "/echo",
+		Method:      fasthttp.MethodPost,
+	}
+	EchoServiceContract = ServiceContract{
+		Label:     "EchoService",
+		Host:      "localhost",
+		Namespace: "servicetest",
+		Version:   "v1",
+		Protocol:  HTTP,
+		RoutesContracts: []RouteContract{
+			SimpleEchoRouteContract,
+			PostEchoRouteContract,
+		},
+	}
+	ServiceContractWithDefaultValues = ServiceContract{
+		Label:     "DefaultEchoService",
+		Host:      "",
+		Namespace: "",
+		Port:      8090,
+		RoutesContracts: []RouteContract{
+			SimpleEchoRouteContract,
+			PostEchoRouteContract,
+		},
+	}
 
-var PostEchoRouteContract = RouteContract{
-	Label:       "PostEcho",
-	Description: "A route that outputs the contents of it's body",
-	Path:        "/echo",
-	Method:      fasthttp.MethodPost,
-}
+	EmptyRoute = Route{}
 
-var EmptyRoute = Route{}
+	contract = &Contract{
+		Services: []ServiceContract{
+			EchoServiceContract,
+			ServiceContractWithDefaultValues,
+		},
+	}
+)
 
-var EchoServiceContract = ServiceContract{
-	Label:     "EchoService",
-	Host:      "localhost",
-	Namespace: "servicetest",
-	Version:   "v1",
-	Protocol:  HTTP,
-	RoutesContracts: []RouteContract{
-		SimpleEchoRouteContract,
-		PostEchoRouteContract,
-	},
-}
-
-var ServiceContractWithDefaultValues = ServiceContract{
-	Label:     "DefaultEchoService",
-	Host:      "",
-	Namespace: "",
-	Port:      8090,
-	RoutesContracts: []RouteContract{
-		SimpleEchoRouteContract,
-		PostEchoRouteContract,
-	},
-}
-
-var contract = &Contract{
-	Services: []ServiceContract{
-		EchoServiceContract,
-		ServiceContractWithDefaultValues,
-	},
-}
-
-func echo(ctx *fasthttp.RequestCtx) {
+func echo(ctx *Context) {
 	ctx.Write(ctx.Method())
 	ctx.WriteString(":")
 	ctx.Write(ctx.RequestURI())
@@ -105,10 +104,9 @@ func TestPanicWhenServicePortIsTaken(t *testing.T) {
 	assert.NotNil(t, simpleEchoRoute, "SetupRoute should return a non nil route for 'SimpleEcho' value")
 
 	postEchoRoute := Route{
-		RouteContract: &PostEchoRouteContract,
-		Endpoint:      echo,
-		Middlewares:   nil,
-		DataHandlers:  nil,
+		RouteContract:  &PostEchoRouteContract,
+		RequestHandler: echo,
+		Middlewares:    nil,
 	}
 	service.AddRoute(&postEchoRoute)
 
@@ -133,10 +131,9 @@ func TestStartService(t *testing.T) {
 	assert.NotNil(t, simpleEchoRoute, "SetupRoute should return a non nil route for 'SimpleEcho' value")
 
 	postEchoRoute := Route{
-		RouteContract: &PostEchoRouteContract,
-		Endpoint:      echo,
-		Middlewares:   nil,
-		DataHandlers:  nil,
+		RouteContract:  &PostEchoRouteContract,
+		RequestHandler: echo,
+		Middlewares:    nil,
 	}
 	service.AddRoute(&postEchoRoute)
 

@@ -26,7 +26,7 @@ func testRequestToHandler(
 
 	err := fasthttp.Do(req, resp)
 	assert.Nil(t, err, "Sending the request must not return an error")
-	assert.NotNil(t, resp, "Request response must not be nil")
+	assert.NotNil(t, resp, "RequestHandler response must not be nil")
 	assert.Equal(t, expectedStatus, resp.StatusCode(), fmt.Sprintf("%s test should return a %d status", testName, expectedStatus))
 	if err != nil {
 		panic(err)

@@ -70,10 +70,14 @@ type ServiceContract struct {
 	Port int
 	// A version identifier for the service. Defaults to "v0"
 	Version string
-	//RoutesContracts is an array of RouteContract used to define the Routes on the contract
+	// RoutesContracts is an array of RouteContract used to define the Routes on the contract
 	RoutesContracts []RouteContract
+	// Subscriptions is an array of other ServiceContract which this service will need to communicate. It's used to create
+	// ServiceClient
+	Subscriptions []ServiceContract
 }
 
+// RouteContractByLabel returns the route contract for the given label
 func (sc *ServiceContract) RouteContractByLabel(label string) *RouteContract {
 	for _, r := range sc.RoutesContracts {
 		if r.Label == label {
@@ -81,6 +85,89 @@ func (sc *ServiceContract) RouteContractByLabel(label string) *RouteContract {
 		}
 	}
 	return nil
+}
+
+func (sc *ServiceContract) host() string {
+	if sc.Host != "" {
+		return sc.Host
+	}
+	return DefaultHost
+}
+
+func (sc *ServiceContract) port() string {
+	if sc.Port != 0 {
+		return fmt.Sprintf("%d", sc.Port)
+	}
+	return DefaultPort
+}
+
+func (sc *ServiceContract) address() string {
+	var builder strings.Builder
+
+	builder.WriteString(sc.host())
+	if sc.port()[0] != ':' {
+		builder.WriteByte(':')
+	}
+	builder.WriteString(sc.port())
+	return builder.String()
+}
+
+func (sc *ServiceContract) Suffix() string {
+	var builder strings.Builder
+	if len(sc.namespace()) > 0 && sc.namespace()[0] != '/' {
+		builder.WriteByte('/')
+	}
+	builder.WriteString(sc.namespace())
+	if sc.version()[0] != '/' {
+		builder.WriteByte('/')
+	}
+	builder.WriteString(sc.version())
+	return builder.String()
+}
+
+func (sc *ServiceContract) protocol() string {
+	if sc.Protocol != "" {
+		return string(sc.Protocol)
+	}
+	return string(HTTP)
+}
+
+func (sc *ServiceContract) namespace() string {
+	if sc.Namespace != "" {
+		return sc.Namespace
+	}
+	return DefaultNamespace
+}
+
+func (sc *ServiceContract) version() string {
+	if sc.Version != "" {
+		return sc.Version
+	}
+	return DefaultVersion
+}
+
+func (sc *ServiceContract) routeByLabel(label string) (*RouteContract, error) {
+	for _, r := range sc.RoutesContracts {
+		if r.Label == label {
+			return &r, nil
+		}
+	}
+	return nil, errors.New(RouteNotFoundError)
+}
+
+func (sc *ServiceContract) RouteUrl(label string) (string, error) {
+	r, err := sc.routeByLabel(label)
+	if err != nil {
+		return "", err
+	}
+	w := strings.Builder{}
+	w.Grow(len(sc.protocol()) + 3 + len(sc.address()) + len(sc.Suffix()) + len(r.Path))
+	w.WriteString(sc.protocol())
+	w.WriteString("://")
+	w.WriteString(sc.address())
+	w.WriteString(sc.Suffix())
+	w.WriteString(r.Path)
+	return w.String(), nil
 }
 
 // Service is a Service Provider that starts itself and serves declared routes over a self created router
@@ -94,6 +181,8 @@ type Service struct {
 	listener net.Listener
 	// routes is an array of Route from the Service. They are validate against the RoutesContracts from the ServiceContract
 	routes []*Route
+	// serviceClients holds references to ServiceClients this service subscribe to
+	serviceClients []*ServiceClient
 }
 
 /** Start inits the main process executed by the service. It first creates the internal router and then start a listener
@@ -111,6 +200,7 @@ values:
 func (service *Service) Start() {
 	service.validateRoutes()
 	service.createRouter()
+	service.startServiceClients()
 	service.startRoutes()
 	service.startListening()
 }
@@ -143,9 +233,9 @@ func (service *Service) Status() *ServiceStatus {
 // middlewares and put it on the Routes array returning the newly created routes
 func (service *Service) SetupRoute(
 	label string,
-	endpoint fasthttp.RequestHandler,
+	endpoint RequestHandler,
 	middlewares []fastalice.Constructor,
-	dataHandlers []DataConverter,
+	dataHandler fastalice.Constructor,
 ) *Route {
 	routeContract := service.routeContract(label)
 	service.testRouteContractExists(routeContract, label)
@@ -153,7 +243,8 @@ func (service *Service) SetupRoute(
 		routeContract,
 		endpoint,
 		middlewares,
-		dataHandlers,
+		dataHandler,
+		[]*ServiceClient{},
 	}
 	service.AddRoute(&route)
 	return &route
@@ -199,9 +290,25 @@ func (service *Service) createRouter() {
 	}
 }
 
+func (service *Service) startServiceClients() {
+	if service.ServiceContract.Subscriptions == nil || len(service.ServiceContract.Subscriptions) == 0 {
+		return
+	}
+	if service.serviceClients == nil {
+		service.serviceClients = make([]*ServiceClient, len(service.ServiceContract.Subscriptions))
+	}
+	for _, sub := range service.ServiceContract.Subscriptions {
+		client := ServiceClient{&sub}
+		service.serviceClients = append(service.serviceClients, &client)
+	}
+}
+
 func (service *Service) startRoutes() {
 	for _, route := range service.routes {
 		route.startRoute(service.router, service.Suffix())
+		for _, client := range service.serviceClients {
+			route.addServiceClient(client)
+		}
 	}
 }
 
@@ -213,87 +320,4 @@ func (service *Service) startListening() {
 	service.listener = ln
 	log.Printf("Serving at: %s", service.address())
 	fasthttp.Serve(ln, service.router.Handler)
-}
-
-func (service *Service) address() string {
-	var builder strings.Builder
-
-	builder.WriteString(service.host())
-	if service.port()[0] != ':' {
-		builder.WriteByte(':')
-	}
-	builder.WriteString(service.port())
-	return builder.String()
-}
-
-func (service *Service) Suffix() string {
-	var builder strings.Builder
-	if len(service.namespace()) > 0 && service.namespace()[0] != '/' {
-		builder.WriteByte('/')
-	}
-	builder.WriteString(service.namespace())
-	if service.version()[0] != '/' {
-		builder.WriteByte('/')
-	}
-	builder.WriteString(service.version())
-	return builder.String()
-}
-
-func (service *Service) protocol() string {
-	if service.Protocol != "" {
-		return string(service.Protocol)
-	}
-	return string(HTTP)
-}
-
-func (service *Service) host() string {
-	if service.Host != "" {
-		return service.Host
-	}
-	return DefaultHost
-}
-
-func (service *Service) port() string {
-	if service.Port != 0 {
-		return fmt.Sprintf("%d", service.Port)
-	}
-	return DefaultPort
-}
-
-func (service *Service) namespace() string {
-	if service.Namespace != "" {
-		return service.Namespace
-	}
-	return DefaultNamespace
-}
-
-func (service *Service) version() string {
-	if service.Version != "" {
-		return service.Version
-	}
-	return DefaultVersion
-}
-
-func (service *Service) routeByLabel(label string) (*Route, error) {
-	for _, r := range service.routes {
-		if r.Label == label {
-			return r, nil
-		}
-	}
-	return nil, errors.New(RouteNotFoundError)
-}
-
-func (service *Service) RouteUrl(label string) (string, error) {
-	r, err := service.routeByLabel(label)
-	if err != nil {
-		return "", err
-	}
-	w := strings.Builder{}
-	w.Grow(len(service.protocol()) + 3 + len(service.address()) + len(service.Suffix()) + len(r.Path))
-	w.WriteString(service.protocol())
-	w.WriteString("://")
-	w.WriteString(service.address())
-	w.WriteString(service.Suffix())
-	w.WriteString(r.Path)
-	return w.String(), nil
 }

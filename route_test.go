@@ -19,8 +19,8 @@ func tagMiddleware(tag string) fastalice.Constructor {
 	}
 }
 
-func testMethodHandler(path string) fasthttp.RequestHandler {
-	return func(ctx *fasthttp.RequestCtx) {
+func testMethodHandler(path string) RequestHandler {
+	return func(ctx *Context) {
 		ctx.WriteString(path)
 		if data := ctx.UserValue("data"); data != nil {
 			if dataMap, ok := data.(map[string]interface{}); ok {
@@ -31,22 +31,22 @@ func testMethodHandler(path string) fasthttp.RequestHandler {
 	}
 }
 
-func routeContractForMethod(method Method, path string, dataContracts []DataContract) *RouteContract {
+func routeContractForMethod(method Method, path string) *RouteContract {
 	return &RouteContract{
 		"Test" + string(method),
 		"Test " + string(method) + " Method",
 		method,
 		path,
-		dataContracts,
+		DataHandlerConfig{},
 	}
 }
 
-func routeForContract(contract *RouteContract, path string, middlewares []fastalice.Constructor, dataHandlers []DataConverter) *Route {
+func routeForContract(contract *RouteContract, path string, middlewares []fastalice.Constructor, dataHandler fastalice.Constructor) *Route {
 	route := Route{
-		RouteContract: contract,
-		Endpoint:      testMethodHandler(path),
-		Middlewares:   middlewares,
-		DataHandlers:  dataHandlers,
+		RouteContract:  contract,
+		RequestHandler: testMethodHandler(path),
+		Middlewares:    middlewares,
+		DataHandler:    dataHandler,
 	}
 	return &route
 }
@@ -72,7 +72,7 @@ func testRequestToHandler(
 
 	err := fasthttp.Do(req, resp)
 	assert.Nil(t, err, "Sending the request must not return an error")
-	assert.NotNil(t, resp, "Request response must not be nil")
+	assert.NotNil(t, resp, "RequestHandler response must not be nil")
 	assert.Equal(t, expectedStatus, resp.StatusCode(), fmt.Sprintf("%s test should return a %d status", testName, expectedStatus))
 	if err != nil {
 		panic(err)
@@ -86,7 +86,7 @@ func testMethod(
 	port string,
 ) {
 	path := "/echo"
-	contract := routeContractForMethod(method, path, nil)
+	contract := routeContractForMethod(method, path)
 	route := routeForContract(contract, path, nil, nil)
 
 	router := fasthttprouter.New()
@@ -124,20 +124,20 @@ func TestPut(t *testing.T) {
 func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	path := "/middlewares"
 	method := Method(POST)
-	dataContract := NewDataContract(Binary)
-	var dataHandler DataConverter
-	dataHandler = &DataHandler{&dataContract, map[string]interface{}{
-		"Foo": "foo",
-		"Bar": "bar",
-	}}
+	payload := ServiceRequest{
+		Body: map[string]interface{}{
+			"Foo": "foo",
+			"Bar": "bar",
+		},
+	}
 	middlewares := []fastalice.Constructor{
 		tagMiddleware("/t1"),
 		tagMiddleware("/t2"),
 		tagMiddleware("/t3"),
 	}
 
-	contract := routeContractForMethod(method, path, []DataContract{dataContract})
-	route := routeForContract(contract, path, middlewares, []DataConverter{dataHandler})
+	contract := routeContractForMethod(method, path)
+	route := routeForContract(contract, path, middlewares, nil)
 
 	router := fasthttprouter.New()
 	route.startRoute(router, "")
@@ -154,7 +154,7 @@ func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	defer fasthttp.ReleaseResponse(resp)
 
 	req.SetRequestURI("http://" + url + path)
-	dataHandler.PrepareRouteRequest(req, route)
+	route.prepareRequest(req, payload)
 
 	fasthttp.Do(req, resp)
 

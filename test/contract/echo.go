@@ -6,20 +6,20 @@ import (
 )
 
 var SimpleEchoRouteContract = lotus.RouteContract{
-	Label: "SimpleEcho",
-	Description: "A Simple route that outputs the Request URI",
-	Path: "/echo",
+	Label:       "SimpleEcho",
+	Description: "A Simple route that outputs the RequestHandler URI",
+	Path:        "/echo",
 }
 
 var PostEchoRouteContract = lotus.RouteContract{
-	Label: "PostEcho",
+	Label:       "PostEcho",
 	Description: "A route that outputs the contents of it's body",
-	Path: "/echo",
-	Method: fasthttp.MethodPost,
+	Path:        "/echo",
+	Method:      fasthttp.MethodPost,
 }
 
 var EchoServiceContract = lotus.ServiceContract{
-	Label: "EchoService",
+	Label:     "EchoService",
 	Host:      "localhost",
 	Port:      8080,
 	Namespace: "nomiddlewaretest",

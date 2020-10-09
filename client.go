@@ -1,8 +1,8 @@
 package lotus
 
 import (
-	"errors"
 	"github.com/valyala/fasthttp"
+	"log"
 )
 
 type ServiceClient struct {
@@ -10,16 +10,11 @@ type ServiceClient struct {
 }
 
 // Sends a request and returns a response and an error. The response must be released
-func (sc *ServiceClient) SendRequest(routeLabel string, payload ServiceRequest) (*fasthttp.Response, error) {
+func (sc *ServiceClient) SendRequest(routeContract RouteContract, payload ServiceRequest) (*fasthttp.Response, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
 	resp := fasthttp.AcquireResponse()
-
-	routeContract := sc.RouteContractByLabel(routeLabel)
-	if routeContract == nil {
-		return resp, errors.New("route not found")
-	}
 
 	url, err := sc.RouteUrl(routeContract.Label)
 	if err != nil {

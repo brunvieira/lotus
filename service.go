@@ -182,7 +182,7 @@ type Service struct {
 	// routes is an array of Route from the Service. They are validate against the RoutesContracts from the ServiceContract
 	routes []*Route
 	// serviceClients holds references to ServiceClients this service subscribe to
-	serviceClients []*ServiceClient
+	serviceClients []ServiceClient
 }
 
 /** Start inits the main process executed by the service. It first creates the internal router and then start a listener
@@ -244,7 +244,7 @@ func (service *Service) SetupRoute(
 		endpoint,
 		middlewares,
 		dataHandler,
-		[]*ServiceClient{},
+		[]ServiceClient{},
 	}
 	service.AddRoute(&route)
 	return &route
@@ -294,21 +294,21 @@ func (service *Service) startServiceClients() {
 	if service.ServiceContract.Subscriptions == nil || len(service.ServiceContract.Subscriptions) == 0 {
 		return
 	}
-	if service.serviceClients == nil {
-		service.serviceClients = make([]*ServiceClient, len(service.ServiceContract.Subscriptions))
+	if service.serviceClients == nil || len(service.serviceClients) == 0 {
+		service.serviceClients = []ServiceClient{}
 	}
 	for _, sub := range service.ServiceContract.Subscriptions {
 		client := ServiceClient{&sub}
-		service.serviceClients = append(service.serviceClients, &client)
+		service.serviceClients = append(service.serviceClients, client)
 	}
 }
 
 func (service *Service) startRoutes() {
 	for _, route := range service.routes {
-		route.startRoute(service.router, service.Suffix())
 		for _, client := range service.serviceClients {
 			route.addServiceClient(client)
 		}
+		route.startRoute(service.router, service.Suffix())
 	}
 }
 

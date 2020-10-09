@@ -7,7 +7,10 @@ import (
 	"github.com/brunvieira/lotus/test/echo_service"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
+	"log"
 	"testing"
+
+	_ "github.com/brunvieira/lotus/test/random_strings"
 )
 
 func testRequestToHandler(
@@ -36,8 +39,6 @@ func testRequestToHandler(
 
 func TestNoMiddlewares(t *testing.T) {
 	service := echo_service.EchoService
-	go service.Start()
-	defer service.Stop()
 
 	endpoint := service.Suffix() + contract.SimpleEchoRouteContract.Path
 	url, err := service.RouteUrl(contract.SimpleEchoRouteContract.Label)
@@ -53,4 +54,22 @@ func TestNoMiddlewares(t *testing.T) {
 	body := resp.Body()
 	assert.NotEmptyf(t, body, "Reading the body response should not return an error")
 	assert.Equal(t, endpoint, string(body), "Body output should be the correct namespace format")
+}
+
+func TestClient(t *testing.T) {
+	service := echo_service.EchoService
+
+	url, err := service.RouteUrl(contract.PostEchoRouteContract.Label)
+	assert.Nil(t, err, "Service must build a valid url for a route")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp := testRequestToHandler(t, contract.PostEchoRouteContract.Method, url, "No Middleware", fasthttp.StatusOK)
+	defer fasthttp.ReleaseResponse(resp)
+
+	body := resp.Body()
+	assert.NotEmptyf(t, body, "Reading the body response should not return an error")
+	log.Printf("Body: %s", body)
 }

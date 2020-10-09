@@ -9,5 +9,6 @@ var EchoService = lotus.Service{ServiceContract: &contract.EchoServiceContract}
 
 func init() {
 	EchoService.SetupRoute(contract.SimpleEchoRouteContract.Label, echo, nil, nil)
-	EchoService.SetupRoute(contract.PostEchoRouteContract.Label, echo, nil, nil)
+	EchoService.SetupRoute(contract.PostEchoRouteContract.Label, randomString, nil, nil)
+	go EchoService.Start()
 }

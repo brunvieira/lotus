@@ -27,7 +27,7 @@ type ServiceRequest struct {
 
 type Context struct {
 	*fasthttp.RequestCtx
-	ServiceClients []*ServiceClient
+	ServiceClients []ServiceClient
 }
 
 func (ctx *Context) Payload() (Payload, error) {
@@ -35,6 +35,15 @@ func (ctx *Context) Payload() (Payload, error) {
 		return payload, nil
 	}
 	return nil, errors.New("fail to convert payload")
+}
+
+func (ctx *Context) ServiceClient(sub ServiceContract) *ServiceClient {
+	for _, c := range ctx.ServiceClients {
+		if c.Label == sub.Label {
+			return &c
+		}
+	}
+	return nil
 }
 
 type RequestHandler func(ctx *Context)

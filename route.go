@@ -147,7 +147,7 @@ type Route struct {
 	// DataHandlers used to receive requests
 	DataHandler fastalice.Constructor
 	// serviceClients holds references to service clients
-	serviceClients []*ServiceClient
+	serviceClients []ServiceClient
 }
 
 func (route *Route) startRoute(router *fasthttprouter.Router, prefix string) {
@@ -176,9 +176,9 @@ func startMiddlewares(route *Route) fasthttp.RequestHandler {
 	return chain.Then(route.defaultRequestHandler)
 }
 
-func (route *Route) addServiceClient(client *ServiceClient) {
+func (route *Route) addServiceClient(client ServiceClient) {
 	if route.serviceClients == nil || len(route.serviceClients) == 0 {
-		route.serviceClients = []*ServiceClient{}
+		route.serviceClients = []ServiceClient{}
 	}
 	route.serviceClients = append(route.serviceClients, client)
 }

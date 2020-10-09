@@ -22,9 +22,12 @@ var EchoServiceContract = lotus.ServiceContract{
 	Label:     "EchoService",
 	Host:      "localhost",
 	Port:      8080,
-	Namespace: "nomiddlewaretest",
+	Namespace: "echo_service",
 	RoutesContracts: []lotus.RouteContract{
 		SimpleEchoRouteContract,
 		PostEchoRouteContract,
+	},
+	Subscriptions: []lotus.ServiceContract{
+		RandomStringsServiceContract,
 	},
 }

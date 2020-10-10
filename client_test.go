@@ -47,7 +47,7 @@ func TestSendRequest(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	resp, err := echoServiceClient.SendRequest("PostEcho", defaultPayload)
+	resp, err := echoServiceClient.SendRequest(PostEchoRouteContract, defaultPayload)
 	defer fasthttp.ReleaseResponse(resp)
 
 	assert.Nil(t, err, "Sending a request must not return an error")

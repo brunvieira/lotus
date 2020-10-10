@@ -48,8 +48,8 @@ func (ctx *Context) ServiceClient(sub ServiceContract) *ServiceClient {
 
 type RequestHandler func(ctx *Context)
 
-func payloadBodyToUrlValues(payload ServiceRequest) (form url.Values, err error) {
-	b, err := json.Marshal(payload.Body)
+func dataToUrlValues(data interface{}) (form url.Values, err error) {
+	b, err := json.Marshal(data)
 	if err != nil {
 		return form, err
 	}

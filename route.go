@@ -74,7 +74,7 @@ func (route *RouteContract) prepareRequest(req *fasthttp.Request, payload Servic
 		req.SetBody(b)
 		return err
 	case Form:
-		m, err := payloadBodyToUrlValues(payload)
+		m, err := dataToUrlValues(payload.Body)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,10 @@ func (route *RouteContract) prepareRequest(req *fasthttp.Request, payload Servic
 }
 
 func (route *RouteContract) prepareQueryParams(req *fasthttp.Request, payload ServiceRequest) error {
-	m, err := payloadBodyToUrlValues(payload)
+	if len(payload.QueryParams) == 0 {
+		return nil
+	}
+	m, err := dataToUrlValues(payload.QueryParams)
 	if err != nil {
 		return err
 	}
@@ -105,7 +108,7 @@ func (route *RouteContract) prepareRouteParams(req *fasthttp.Request, payload Se
 		return nil
 	}
 
-	m, err := payloadBodyToUrlValues(payload)
+	m, err := dataToUrlValues(payload.RouteParams)
 	if err != nil {
 		return err
 	}

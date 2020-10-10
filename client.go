@@ -2,7 +2,6 @@ package lotus
 
 import (
 	"github.com/valyala/fasthttp"
-	"log"
 )
 
 type ServiceClient struct {

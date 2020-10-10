@@ -17,6 +17,5 @@ func generateRandomStrings(ctx *lotus.Context) {
 		randomChar := charSet[random]
 		output.WriteString(string(randomChar))
 	}
-	ctx.Response.Header.Set("content-type", "text/plain")
 	ctx.WriteString(output.String())
 }

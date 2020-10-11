@@ -1,5 +1,13 @@
 package lotus
 
+import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"reflect"
+	"testing"
+	"time"
+)
+
 //
 //import (
 //	"errors"
@@ -12,23 +20,57 @@ package lotus
 //	"time"
 //)
 //
-//type SamplePayload struct {
-//	Foo        string
-//	FooBar     []string
-//	IntValue   int     `json:",string"`
-//	FloatValue float64 `json:",string"`
-//	Time       time.Time
-//	Boolean    bool
-//}
-//
-//var defaultPayload = SamplePayload{
-//	Foo:        "foo",
-//	FooBar:     []string{"foo", "bar"},
-//	IntValue:   1200,
-//	FloatValue: 3.1412,
-//	Time:       time.Now(),
-//	Boolean:    true,
-//}
+type SamplePayload struct {
+	Foo         string
+	FooBar      []string
+	IntValue    int     `json:",string"`
+	FloatValue  float64 `json:",string"`
+	Time        time.Time
+	Boolean     bool
+	FloatValues []float64
+}
+
+var payload = SamplePayload{
+	Foo:         "foo",
+	FooBar:      []string{"foo", "bar"},
+	IntValue:    1200,
+	FloatValue:  3.1412,
+	Time:        time.Now(),
+	Boolean:     true,
+	FloatValues: []float64{1.57, 8.4342},
+}
+
+func TestInterfaceToUrlValues(t *testing.T) {
+	result := make(map[string]interface{}, 1)
+	result["payload"] = payload
+
+	iVal := reflect.ValueOf(result["payload"])
+	typ := iVal.Type()
+	numField := iVal.NumField()
+
+	form := make(map[string][]string, numField)
+	for i := 0; i < numField; i++ {
+		t := typ.Field(i).Name
+		f := iVal.Field(i)
+
+		if form[t] == nil {
+			form[t] = []string{}
+		}
+
+		switch f.Kind() {
+		case reflect.Slice:
+			iVal2 := reflect.ValueOf(f.Interface())
+			for j := 0; j < iVal2.Len(); j++ {
+				f2 := iVal2.Index(j)
+				form[t] = append(form[t], fmt.Sprint(f2))
+			}
+		default:
+			form[t] = append(form[t], fmt.Sprint(f))
+		}
+	}
+	assert.NotNil(t, form, "Form must not be nil")
+}
+
 //
 //var getPayload = map[string]string{
 //	"foo": "bar",

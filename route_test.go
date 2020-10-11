@@ -38,6 +38,7 @@ func routeContractForMethod(method Method, path string) *RouteContract {
 		method,
 		path,
 		DataHandlerConfig{},
+		nil,
 	}
 }
 

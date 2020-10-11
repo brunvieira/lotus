@@ -1,11 +1,11 @@
 package lotus
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/valyala/fasthttp"
 	"net/url"
+	"reflect"
 )
 
 type DataType int
@@ -16,7 +16,7 @@ const (
 	Form            = 3
 )
 
-type Payload map[string]interface{}
+type Payload interface{} // This will be much better with generics
 
 type ServiceRequest struct {
 	RouteParams map[string]string
@@ -31,7 +31,7 @@ type Context struct {
 }
 
 func (ctx *Context) Payload() (Payload, error) {
-	if payload, ok := ctx.UserValue(DefaultKey).(map[string]interface{}); ok {
+	if payload, ok := ctx.UserValue(DefaultKey).(interface{}); ok {
 		return payload, nil
 	}
 	return nil, errors.New("fail to convert payload")
@@ -49,28 +49,22 @@ func (ctx *Context) ServiceClient(sub ServiceContract) *ServiceClient {
 type RequestHandler func(ctx *Context)
 
 func dataToUrlValues(data interface{}) (form url.Values, err error) {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return form, err
-	}
 	form = map[string][]string{}
-	var result Payload
-	err = json.Unmarshal(b, &result)
-	if err != nil {
-		return form, err
-	}
-	for k, v := range result {
+	iValue := reflect.ValueOf(data)
+	for i := 0; i < iValue.NumField(); i++ {
+		k := iValue.Type().Field(i).Name
+		v := iValue.Field(i)
+
 		if form[k] == nil {
 			form[k] = []string{}
 		}
-		switch v := v.(type) {
-		case []interface{}:
-			for _, u := range v {
-				if u, ok := u.(string); ok {
-					form[k] = append(form[k], u)
-				} else {
-					err = errors.New(fmt.Sprintf("Could not convert: %+v of type %s to string", u, v))
-				}
+
+		switch v.Kind() {
+		case reflect.Slice:
+			v2 := reflect.ValueOf(v.Interface())
+			for j := 0; j < v2.Len(); j++ {
+				f2 := v2.Index(j)
+				form[k] = append(form[k], fmt.Sprint(f2))
 			}
 		default:
 			form[k] = append(form[k], fmt.Sprint(v))

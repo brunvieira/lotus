@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/brunvieira/fastalice"
 	"github.com/buaazp/fasthttprouter"
+	"github.com/mitchellh/mapstructure"
 	"github.com/valyala/fasthttp"
 	"github.com/vmihailenco/msgpack"
 	"regexp"
@@ -51,6 +52,8 @@ type RouteContract struct {
 	Path string
 	// DataHandlerConfig is the configuration for the route DataHandler. This is an optional field
 	DataHandlerConfig DataHandlerConfig
+	// Data is the Data used. Use an empty struct value
+	Data interface{}
 }
 
 func (route *RouteContract) prepareRequest(req *fasthttp.Request, payload ServiceRequest) (err error) {
@@ -193,7 +196,7 @@ func (route *Route) defaultRequestHandler(ctx *fasthttp.RequestCtx) {
 
 func (route *Route) defaultDataHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
-		var data interface{}
+		var m map[string]interface{}
 		var err error
 
 		body := ctx.PostBody()
@@ -201,11 +204,13 @@ func (route *Route) defaultDataHandler(next fasthttp.RequestHandler) fasthttp.Re
 
 		if len(body) > 0 {
 			if route.DataType() == JSON {
-				err = json.Unmarshal(body, &data)
+				err = json.Unmarshal(body, &m)
 			} else {
-				err = msgpack.Unmarshal(body, &data)
+				err = msgpack.Unmarshal(body, &m)
 			}
-			if data != nil {
+			if len(m) > 0 {
+				data := route.Data
+				mapstructure.Decode(m, &data) // @TODO get rid of this once we have Generics
 				ctx.SetUserValue(key, data)
 			}
 		}

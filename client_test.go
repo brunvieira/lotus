@@ -8,7 +8,19 @@ import (
 	"time"
 )
 
+type EchoPayload struct {
+	Foo string
+	Bar string
+}
+
 var (
+	postEchoRouteContract = RouteContract{
+		Label:       "PostEcho",
+		Description: "A route that outputs the contents of it's body",
+		Path:        "/echo",
+		Method:      fasthttp.MethodPost,
+		Data:        EchoPayload{},
+	}
 	serviceClientContract = ServiceContract{
 		Label:     "DefaultEchoService",
 		Host:      "",
@@ -16,16 +28,16 @@ var (
 		Port:      10080,
 		RoutesContracts: []RouteContract{
 			SimpleEchoRouteContract,
-			PostEchoRouteContract,
+			postEchoRouteContract,
 		},
 	}
 	echoServiceClient = ServiceClient{
 		&serviceClientContract,
 	}
 	defaultPayload = ServiceRequest{
-		Body: Payload{
-			"Foo": "foo",
-			"Bar": "bar",
+		Body: EchoPayload{
+			Foo: "foo",
+			Bar: "bar",
 		},
 	}
 	echoPayload = func(ctx *Context) {
@@ -47,7 +59,7 @@ func TestSendRequest(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	resp, err := echoServiceClient.SendRequest(PostEchoRouteContract, defaultPayload)
+	resp, err := echoServiceClient.SendRequest(postEchoRouteContract, defaultPayload)
 	defer fasthttp.ReleaseResponse(resp)
 
 	assert.Nil(t, err, "Sending a request must not return an error")

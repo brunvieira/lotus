@@ -72,9 +72,6 @@ type ServiceContract struct {
 	Version string
 	// RoutesContracts is an array of RouteContract used to define the Routes on the contract
 	RoutesContracts []RouteContract
-	// Subscriptions is an array of other ServiceContract which this service will need to communicate. It's used to create
-	// ServiceClient
-	Subscriptions []ServiceContract
 }
 
 // RouteContractByLabel returns the route contract for the given label
@@ -183,6 +180,8 @@ type Service struct {
 	routes []*Route
 	// serviceClients holds references to ServiceClients this service subscribe to
 	serviceClients []ServiceClient
+	// subscriptions holds references to other Service this Service has clients to
+	subscriptions []ServiceContract
 }
 
 /** Start inits the main process executed by the service. It first creates the internal router and then start a listener
@@ -291,13 +290,13 @@ func (service *Service) createRouter() {
 }
 
 func (service *Service) startServiceClients() {
-	if service.ServiceContract.Subscriptions == nil || len(service.ServiceContract.Subscriptions) == 0 {
+	if service.subscriptions == nil || len(service.subscriptions) == 0 {
 		return
 	}
 	if service.serviceClients == nil || len(service.serviceClients) == 0 {
 		service.serviceClients = []ServiceClient{}
 	}
-	for _, sub := range service.ServiceContract.Subscriptions {
+	for _, sub := range service.subscriptions {
 		client := ServiceClient{&sub}
 		service.serviceClients = append(service.serviceClients, client)
 	}
@@ -320,4 +319,11 @@ func (service *Service) startListening() {
 	service.listener = ln
 	log.Printf("Serving at: %s", service.address())
 	fasthttp.Serve(ln, service.router.Handler)
+}
+
+func (service *Service) SubscribeToService(sub ServiceContract) {
+	if service.subscriptions == nil || len(service.subscriptions) == 0 {
+		service.subscriptions = make([]ServiceContract, 0)
+	}
+	service.subscriptions = append(service.subscriptions, sub)
 }

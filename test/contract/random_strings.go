@@ -21,6 +21,5 @@ var (
 		RoutesContracts: []lotus.RouteContract{
 			RandomStringsRouteContract,
 		},
-		Subscriptions: nil,
 	}
 )

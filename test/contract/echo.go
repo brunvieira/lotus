@@ -27,7 +27,4 @@ var EchoServiceContract = lotus.ServiceContract{
 		SimpleEchoRouteContract,
 		PostEchoRouteContract,
 	},
-	Subscriptions: []lotus.ServiceContract{
-		RandomStringsServiceContract,
-	},
 }

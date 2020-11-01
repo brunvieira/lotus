@@ -237,7 +237,7 @@ func (service *Service) SetupRoute(
 	dataHandler fastalice.Constructor,
 ) *Route {
 	routeContract := service.routeContract(label)
-	service.testRouteContractExists(routeContract, label)
+	service.testRouteContractExists(routeContract, label, true)
 	route := Route{
 		routeContract,
 		endpoint,
@@ -264,13 +264,20 @@ func (service *Service) validateRoutes() {
 				routeContract = c.RouteContract
 			}
 		}
-		service.testRouteContractExists(routeContract, desc.Label)
+		service.testRouteContractExists(routeContract, desc.Label, false)
 	}
 }
 
-func (service *Service) testRouteContractExists(routeContract *RouteContract, label string) {
+func (service *Service) testRouteContractExists(
+	routeContract *RouteContract,
+	label string,
+	shouldPanic bool,
+) {
 	if routeContract == nil {
-		panic("Route for " + label + " not found")
+		if shouldPanic {
+			panic("Route for " + label + " not found")
+		}
+		log.Printf("Warning: Route for " + label + " not found")
 	}
 }
 

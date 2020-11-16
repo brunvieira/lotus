@@ -71,23 +71,33 @@ func (route *RouteContract) prepareRequest(req *fasthttp.Request, payload Servic
 		return
 	}
 
-	switch route.DataType() {
+	dataType := payload.DataType
+	if len(dataType) == 0 {
+		dataType = route.DataType()
+	}
+
+	switch dataType {
 	case JSON:
 		b, err := json.Marshal(payload.Body)
+		req.Header.Set("Content-Type", string(JSON))
 		req.SetBody(b)
 		return err
+	case MultipartForm:
 	case Form:
 		m, err := dataToUrlValues(payload.Body)
 		if err != nil {
 			return err
 		}
+		req.Header.Set("Content-Type", string(Form))
 		req.SetBodyString(m.Encode())
 		return err
 	default:
 		b, err := msgpack.Marshal(payload.Body)
+		req.Header.Set("Content-Type", string(Binary))
 		req.SetBody(b)
 		return err
 	}
+	return nil
 }
 
 func (route *RouteContract) prepareQueryParams(req *fasthttp.Request, payload ServiceRequest) error {
@@ -130,7 +140,7 @@ func (route *RouteContract) method() Method {
 }
 
 func (route *RouteContract) DataType() DataType {
-	if route.DataHandlerConfig.BodyType != 0 {
+	if route.DataHandlerConfig.BodyType != "" {
 		return route.DataHandlerConfig.BodyType
 	}
 	return DefaultBodyDataType
@@ -202,10 +212,13 @@ func (route *Route) defaultDataHandler(next fasthttp.RequestHandler) fasthttp.Re
 		body := ctx.PostBody()
 		key := route.userValueKey()
 
+		dataType := DataType(ctx.Request.Header.Peek("Content-Type"))
+
 		if len(body) > 0 {
-			if route.DataType() == JSON {
+			if dataType == JSON {
 				err = json.Unmarshal(body, &m)
-			} else {
+			}
+			if dataType == Binary {
 				err = msgpack.Unmarshal(body, &m)
 			}
 			if len(m) > 0 {

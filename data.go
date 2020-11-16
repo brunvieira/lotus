@@ -8,12 +8,20 @@ import (
 	"reflect"
 )
 
-type DataType int
+type DataType string
 
 const (
-	Binary DataType = 1
-	JSON            = 2
-	Form            = 3
+	// JSON http header for json data
+	JSON DataType = "application/json"
+
+	// Binary http header for msgpack data. This is the default type used for intra-service communication
+	Binary DataType = "application/msgpack"
+
+	// Form http header for non-multipart form
+	Form DataType = "application/x-www-form-urlencoded"
+
+	// MultipartForm http header fo
+	MultipartForm DataType = "multipart/form-data"
 )
 
 type Payload interface{} // This will be much better with generics

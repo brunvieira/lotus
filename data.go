@@ -59,24 +59,37 @@ type RequestHandler func(ctx *Context)
 func dataToUrlValues(data interface{}) (form url.Values, err error) {
 	form = map[string][]string{}
 	iValue := reflect.ValueOf(data)
-	for i := 0; i < iValue.NumField(); i++ {
-		k := iValue.Type().Field(i).Name
-		v := iValue.Field(i)
-
-		if form[k] == nil {
-			form[k] = []string{}
+	switch data.(type) {
+	case map[string]interface{}:
+		for k, v := range data.(map[string]interface{}) {
+			valuesToForm(form, k, reflect.ValueOf(v))
 		}
+		return form, nil
+	default:
+		for i := 0; i < iValue.NumField(); i++ {
+			k := iValue.Type().Field(i).Name
+			v := iValue.Field(i)
 
-		switch v.Kind() {
-		case reflect.Slice:
-			v2 := reflect.ValueOf(v.Interface())
-			for j := 0; j < v2.Len(); j++ {
-				f2 := v2.Index(j)
-				form[k] = append(form[k], fmt.Sprint(f2))
-			}
-		default:
-			form[k] = append(form[k], fmt.Sprint(v))
+			valuesToForm(form, k, v)
 		}
+		return form, err
 	}
-	return form, err
 }
+
+func valuesToForm(form url.Values, k string, v reflect.Value) {
+	if form[k] == nil {
+		form[k] = []string{}
+	}
+
+	switch v.Kind() {
+	case reflect.Slice:
+		v2 := reflect.ValueOf(v.Interface())
+		for j := 0; j < v2.Len(); j++ {
+			f2 := v2.Index(j)
+			form[k] = append(form[k], fmt.Sprint(f2))
+		}
+	default:
+		form[k] = append(form[k], fmt.Sprint(v))
+	}
+}
+

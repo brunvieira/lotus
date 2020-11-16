@@ -26,6 +26,9 @@ func testMethodHandler(path string) RequestHandler {
 			if dataMap, ok := data.(map[string]interface{}); ok {
 				ctx.WriteString(fmt.Sprintf("[%s]=%v", "Foo", dataMap["Foo"]))
 				ctx.WriteString(fmt.Sprintf("[%s]=%v", "Bar", dataMap["Bar"]))
+				if dataMap["FooBar"] != nil {
+					ctx.WriteString(fmt.Sprintf("[%s]=%v", "FooBar", dataMap["FooBar"]))
+				}
 			}
 		}
 	}
@@ -164,3 +167,103 @@ func TestMiddlewareDataHandlerOrder(t *testing.T) {
 	assert.Equal(t, "/t1/t2/t3"+path+"[Foo]=foo[Bar]=bar", string(body), "Body output should be the correct write order")
 
 }
+
+func TestJsonData(t *testing.T) {
+	path := "/echo"
+	method := Method(POST)
+	contract := routeContractForMethod(method, path)
+	route := routeForContract(contract, path, nil, nil)
+	payload := ServiceRequest{
+		DataType: JSON,
+		Body: map[string]interface{}{
+			"Foo": "foo",
+			"Bar": "bar",
+		},
+	}
+
+	router := fasthttprouter.New()
+	route.startRoute(router, "")
+
+	url := "localhost:8085"
+	ln, _ := net.Listen("tcp", url)
+	go fasthttp.Serve(ln, router.Handler)
+	defer ln.Close()
+
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.SetRequestURI("http://" + url + path)
+	route.prepareRequest(req, payload)
+
+	fasthttp.Do(req, resp)
+
+	body := resp.Body()
+	assert.NotEmptyf(t, body, "Reading the body response should not return an error")
+	assert.Equal(t, path+"[Foo]=foo[Bar]=bar", string(body), "Body output should be the correct path and data")
+}
+
+func TestFormData(t *testing.T) {
+	path := "/echo"
+	method := Method(POST)
+	contract := routeContractForMethod(method, path)
+	route := routeForContract(contract, path, nil, nil)
+	payload := ServiceRequest{
+		DataType: Form,
+		Body: map[string]interface{}{
+			"Foo": "foo",
+			"Bar": "bar",
+			"FooBar": []string{"foo", "bar"},
+		},
+	}
+	route.DataHandler = func (next fasthttp.RequestHandler) fasthttp.RequestHandler{
+		return func (ctx *fasthttp.RequestCtx){
+			data := map[string]interface{}{}
+			key := route.userValueKey()
+			args := ctx.PostArgs()
+
+			if args.Has("Foo") {
+				data["Foo"] = string(args.Peek("Foo"))
+			}
+			if args.Has("Bar") {
+				data["Bar"] = string(args.Peek("Bar"))
+			}
+			if args.Has("FooBar") {
+				fooBar := args.PeekMulti("FooBar")
+				fooBarSlice := make([]string, len(fooBar))
+				for i, v := range fooBar {
+					fooBarSlice[i] = string(v)
+				}
+				data["FooBar"] = fooBarSlice
+			}
+			ctx.SetUserValue(key, data)
+			next(ctx)
+		}
+	}
+
+	router := fasthttprouter.New()
+	route.startRoute(router, "")
+
+	url := "localhost:8087"
+	ln, _ := net.Listen("tcp", url)
+	go fasthttp.Serve(ln, router.Handler)
+	defer ln.Close()
+
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.SetRequestURI("http://" + url + path)
+	route.prepareRequest(req, payload)
+
+	fasthttp.Do(req, resp)
+
+	body := resp.Body()
+	assert.NotEmptyf(t, body, "Reading the body response should not return an error")
+	assert.Equal(t, path+"[Foo]=foo[Bar]=bar[FooBar]=[foo bar]", string(body), "Body output should be the correct path and data")
+}
+

@@ -33,7 +33,7 @@ const (
 	DefaultKey string = "data"
 )
 
-var routerParamReg = regexp.MustCompile(`:[a-zA-Z0-9]*`)
+var routerParamReg = regexp.MustCompile(`:[a-zA-Z0-9_]*`)
 
 type DataHandlerConfig struct {
 	BodyType     DataType
